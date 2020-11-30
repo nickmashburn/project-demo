@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <style>
+    .float-main {
+      padding: 20px;
+    }
+
+    .float-sub {
+      width: 40%;
+      float: left;
+      padding: 10px;
+      border: 1px black;
+    }
+  
+  </style>
+    
+  <title>A1C History</title>
+   <script src="fhir-client.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  </head>
+  <body>
+    
+    <h1 id="status">Looking for HbA1C Observations...</h1>
+
+    <div class = "float-main">
+    
+        <div class = "float-sub">
+            <div>
+              <h2>Helping your Diabetic Patient understand their A1c</h2>
+              <p>Hemoglobin A1c, or HbA1c, is an incredibly important number for Diabetic patients, but it can also be confusing and potentially discouraging when patients have difficulty improving their A1c. Here are some resources your patient may find helpful.&nbsp;</p>
+              <p>Physical Health:</p>
+              <ul>
+              <li><a href="https://www.healthline.com/nutrition/15-ways-to-lower-blood-sugar">Controlling your Blood Glucose</a></li>
+              <li><a href="https://www.mayoclinic.org/diseases-conditions/diabetes/in-depth/diabetes-diet/art-20044295">The importance of a healthy diet</a></li>
+              <li><a href="https://www.webmd.com/diabetes/ss/slideshow-exercises-diabetes">How can exercise help me with my Diabetes?</a></li>
+              </ul>
+              <p>Mental Health &amp; Wellbeing:</p>
+              <ul>
+              <li><a href="https://www.cdc.gov/diabetes/managing/mental-health.html">What the CDC says about Diabetes and Mental Health</a></li>
+              </ul>
+              <p>Have a concern about your patient's wellbeing? Reach out to the XYZ Hotline to get them the help they need.&nbsp;</p>
+            </div>
+          </div>
+          
+          <div class="float-sub">
+              <div id="a1c-chart" style="width:600px;height:400px;"></div>
+            </div>
+
+    </div>
+    <script>
+      
+      
+      FHIR.oauth2.ready( getHbA1cdata, showError );
+      
+      var statusDiv =  document.getElementById("status");
+      var a1cChartDiv = document.getElementById("a1c-chart");
+
+      function getHbA1cdata(smart) {
+        
+        smart.patient.api.search({
+          type: "Observation", 
+          query: {
+            code: "4548-4", 
+            "_sort:desc": "date", 
+            _count: 15
+          }
+          
+        }).then( function(fhirObservations) {
+
+          var dates = [];
+          var values = [];            
+          
+          (fhirObservations.data.entry || []).forEach( function(hba1c) {
+            var date = hba1c.resource.effectiveDateTime;
+            var value = hba1c.resource.valueQuantity && hba1c.resource.valueQuantity.value;
+            if (date && value && dates.indexOf(date) == -1) {
+              dates.push(date);
+              values.push(Math.round(value*10)/10);
+            };
+          });
+          
+          if (values.length === 0)
+            return statusDiv.innerHTML = "No A1c Labs found.";
+          
+          statusDiv.style.display = "none";
+
+          Plotly.newPlot(a1cChartDiv, {
+            data: [{
+              x: dates,
+              y: values,
+              type: "scatter"
+            }],
+            layout: {
+              title: "Your Patient's A1C (HbA1c) Labs",
+              xaxis: {type: "date", tickformat: "%b %y"},
+              yaxis: {range: [0, 10]}
+            },
+            config: {
+              displayModeBar: false
+            }
+          });          
+        });
+        
+      }
+      /*
+      FHIR.oauth2.ready( getGlucosedata, showError );
+      
+      var statusDiv =  document.getElementById("status");
+      var glucoseChartDiv = document.getElementById("glucose-chart");
+      
+      function getGlucosedata(smart) {
+        
+        smart.patient.api.search({
+          type: "Observation", 
+          query: {
+            code: "2339-0", 
+            "_sort:desc": "date", 
+            _count: 10
+          }
+          
+        }).then( function(fhirObservations) {
+
+          var dates = [];
+          var values = [];            
+          
+          (fhirObservations.data.entry || []).forEach( function(glucose) {
+            var date = glucose.resource.effectiveDateTime;
+            var value = glucose.resource.valueQuantity && glucose.resource.valueQuantity.value;
+            if (date && value && dates.indexOf(date) == -1) {
+              dates.push(date);
+              values.push(Math.round(value*10)/10);
+            };
+          });
+          
+          if (values.length === 0)
+            return statusDiv.innerHTML = "No Blood Glucose observations found.";
+          
+          statusDiv.style.display = "none";
+
+          Plotly.newPlot(glucoseChartDiv, {
+            data: [{
+              x: dates,
+              y: values,
+              type: "scatter"
+            }],
+            layout: {
+              title: "Blood Glucose Lab Values",
+              xaxis: {type: "date", tickformat: "%b %y"},
+              yaxis: {range: [0, 200]}
+            },
+            config: {
+              displayModeBar: false
+            }
+          });          
+        });
+        
+      }
+      */
+      function showError(error) {
+        return statusDiv.innerHTML = "An error occurred connecting to the EHR";
+      }
+    </script>
+
+  </body>
+</html>
+
+
